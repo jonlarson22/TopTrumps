@@ -28,6 +28,7 @@ const statContainer = document.getElementById('stat-buttons-container');
 
 let currentRoom = null;
 let playerId = null;
+let currentRoomData = null;
 
 // Create a new game room
 createBtn.addEventListener('click', () => {
@@ -79,12 +80,22 @@ function listenToRoom(roomId) {
   onValue(roomRef, (snapshot) => {
     const data = snapshot.val();
     if (data) {
+      currentRoomData = data;
       renderGame(data);
     }
   });
 }
 
 function renderGame(roomData) {
+  if (roomData.status === 'game_over') {
+    const isMe = roomData.winner === playerId;
+    gameStatus.textContent = isMe ? "🏆 YOU WON THE GAME!" : "💀 YOU LOST!";
+    gameStatus.style.background = isMe ? "#f1c40f" : "#c0392b";
+    statContainer.innerHTML = '';
+    cardName.textContent = "Game Over";
+    return;
+  }
+  
   if (roomData.status === 'waiting') {
     gameStatus.textContent = "Waiting for opponent to join...";
     roomUi.classList.add('hidden');
@@ -150,13 +161,65 @@ function shuffle(array) {
   return array;
 }
 
-function handleStatClick(statKey, statValue) {
-  console.log(`You chose ${statKey} with a value of ${statValue}`);
-  
+function handleStatClick(statKey, myStatValue) {
+  // 1. Setup & Safety Check
+  if (currentRoomData.currentTurn !== playerId) return; 
+  const opponentId = playerId === 'player1' ? 'player2' : 'player1';
+
+  // 2. Clone the decks so we can safely modify them
+  const myDeck = [...(currentRoomData.players[playerId].deck || [])];
+  const oppDeck = [...(currentRoomData.players[opponentId].deck || [])];
+
+  // 3. Pull the top cards from both decks
+  const myCard = myDeck.shift(); 
+  const oppCard = oppDeck.shift(); 
+  const oppStatValue = oppCard.stats[statKey];
+
+  // 4. Determine the Winner
+  let winnerId = null;
+  let isTie = false;
+
+  if (myStatValue > oppStatValue) {
+    winnerId = playerId;
+  } else if (oppStatValue > myStatValue) {
+    winnerId = opponentId;
+  } else {
+    isTie = true;
+  }
+
+  // 5. Handle Cards & The Limbo Pile
+  let limbo = currentRoomData.limbo || [];
+  const cardsInPlay = [myCard, oppCard];
+
+  if (isTie) {
+    limbo.push(...cardsInPlay);
+    alert(`Tie! Both dragons had ${myStatValue} ${statKey}. Cards go to the middle.`);
+  } else {
+    // Winner takes the active cards + any cards stuck in the middle from past ties
+    const winningDeck = winnerId === playerId ? myDeck : oppDeck;
+    winningDeck.push(...cardsInPlay, ...limbo);
+    limbo = []; // Clear the middle
+    
+    const winnerName = winnerId === playerId ? "You" : "Opponent";
+    alert(`${winnerName} won!\n${statKey}: ${Math.max(myStatValue, oppStatValue)} vs ${Math.min(myStatValue, oppStatValue)}`);
+  }
+
+  // 6. Check for Game Over
+  if (myDeck.length === 0 || oppDeck.length === 0) {
+    const roomRef = ref(db, `rooms/${currentRoom}`);
+    update(roomRef, { 
+      status: 'game_over', 
+      winner: myDeck.length === 0 ? opponentId : playerId 
+    });
+    return;
+  }
+
+  // 7. Push the new state back to Firebase
   const roomRef = ref(db, `rooms/${currentRoom}`);
-  // Update Firebase to initiate the comparison phase
   update(roomRef, { 
-    status: 'resolving',
-    activeStat: statKey
+    currentTurn: isTie ? playerId : winnerId, // On a tie, the same player goes again
+    limbo: limbo,
+    [`players/${playerId}/deck`]: myDeck,
+    [`players/${opponentId}/deck`]: oppDeck
   });
 }
