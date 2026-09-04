@@ -1,6 +1,7 @@
 // Import Firebase Modular SDK directly from the CDN
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+import { cardDeck } from './deck.js';
 
 // TODO: Replace with your actual Firebase project configuration
 const firebaseConfig = {
@@ -39,15 +40,29 @@ createBtn.addEventListener('click', () => {
   alert(`Room Created! Share this code: ${currentRoom}`);
 });
 
-// Join an existing game room
 joinBtn.addEventListener('click', () => {
   currentRoom = roomInput.value.trim().toUpperCase();
   if (!currentRoom) return;
   
   playerId = 'player2';
   
-  const roomRef = ref(db, `rooms/${currentRoom}/players/player2`);
-  update(roomRef, { name: 'Guest', deck: [] });
+  // 1. Shuffle the imported deck
+  const shuffledDeck = shuffle([...cardDeck]);
+  
+  // 2. Split the deck in half
+  const midPoint = Math.ceil(shuffledDeck.length / 2);
+  const p1Cards = shuffledDeck.slice(0, midPoint);
+  const p2Cards = shuffledDeck.slice(midPoint);
+
+  // 3. Update the entire room state to start the game
+  const roomRef = ref(db, `rooms/${currentRoom}`);
+  update(roomRef, { 
+    status: 'playing',
+    currentTurn: 'player1', // Host goes first
+    'players/player1/deck': p1Cards,
+    'players/player2/name': 'Guest',
+    'players/player2/deck': p2Cards
+  });
   
   listenToRoom(currentRoom);
 });
@@ -62,4 +77,15 @@ function listenToRoom(roomId) {
       // Here is where we'll eventually trigger UI updates to draw the cards
     }
   });
+}
+
+// Fisher-Yates algorithm for a fair shuffle
+function shuffle(array) {
+  let currentIndex = array.length, randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+  }
+  return array;
 }
