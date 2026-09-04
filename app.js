@@ -19,6 +19,12 @@ const createBtn = document.getElementById('create-room-btn');
 const joinBtn = document.getElementById('join-room-btn');
 const roomInput = document.getElementById('room-code-input');
 const gameBoard = document.getElementById('game-board');
+const roomUi = document.getElementById('room-ui');
+const gameStatus = document.getElementById('game-status');
+const playerCount = document.getElementById('player-count');
+const opponentCount = document.getElementById('opponent-count');
+const cardName = document.getElementById('card-name');
+const statContainer = document.getElementById('stat-buttons-container');
 
 let currentRoom = null;
 let playerId = null;
@@ -73,10 +79,64 @@ function listenToRoom(roomId) {
   onValue(roomRef, (snapshot) => {
     const data = snapshot.val();
     if (data) {
-      console.log("Firebase sync triggered. Room data:", data);
-      // Here is where we'll eventually trigger UI updates to draw the cards
+      renderGame(data);
     }
   });
+}
+
+function renderGame(roomData) {
+  if (roomData.status === 'waiting') {
+    gameStatus.textContent = "Waiting for opponent to join...";
+    roomUi.classList.add('hidden');
+    gameBoard.classList.remove('hidden');
+    return;
+  }
+
+  if (roomData.status === 'playing') {
+    roomUi.classList.add('hidden');
+    gameBoard.classList.remove('hidden');
+
+    const isMyTurn = roomData.currentTurn === playerId;
+    gameStatus.textContent = isMyTurn ? "Your Turn! Pick a stat." : "Opponent's Turn... waiting.";
+    gameStatus.style.background = isMyTurn ? "#27ae60" : "#e67e22";
+
+    const opponentId = playerId === 'player1' ? 'player2' : 'player1';
+    
+    // Safely get decks (fallback to empty array if undefined)
+    const myDeck = roomData.players[playerId]?.deck || [];
+    const oppDeck = roomData.players[opponentId]?.deck || [];
+
+    playerCount.textContent = myDeck.length;
+    opponentCount.textContent = oppDeck.length;
+
+    // Render active card if you have cards left
+    if (myDeck.length > 0) {
+      const topCard = myDeck[0];
+      cardName.textContent = topCard.name;
+      
+      // Clear previous buttons
+      statContainer.innerHTML = '';
+
+      // Generate stat buttons
+      for (const [stat, value] of Object.entries(topCard.stats)) {
+        const btn = document.createElement('button');
+        btn.className = 'stat-btn';
+        btn.disabled = !isMyTurn; // Disable if it's not your turn
+        
+        btn.innerHTML = `
+          <span class="stat-label">${stat}</span>
+          <span class="stat-value">${value}</span>
+        `;
+        
+        // Add click listener to trigger the move
+        btn.addEventListener('click', () => handleStatClick(stat, topCard.stats[stat]));
+        statContainer.appendChild(btn);
+      }
+    } else {
+      cardName.textContent = "You are out of cards!";
+      statContainer.innerHTML = '';
+    }
+  }
 }
 
 // Fisher-Yates algorithm for a fair shuffle
@@ -88,4 +148,15 @@ function shuffle(array) {
     [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
   }
   return array;
+}
+
+function handleStatClick(statKey, statValue) {
+  console.log(`You chose ${statKey} with a value of ${statValue}`);
+  
+  const roomRef = ref(db, `rooms/${currentRoom}`);
+  // Update Firebase to initiate the comparison phase
+  update(roomRef, { 
+    status: 'resolving',
+    activeStat: statKey
+  });
 }
