@@ -3,12 +3,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebas
 import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 import { cardDeck } from './deck.js';
 
-// TODO: Replace with your actual Firebase project configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT",
+  apiKey: "AIzaSyCRDOc0bjBUsXIcXKSU5iXDRHqeetxirb4",
+  authDomain: "toptrumps-fbc41.firebaseapp.com",
+  databaseURL: "https://toptrumps-fbc41-default-rtdb.firebaseio.com",
+  projectId: "toptrumps-fbc41",
+  storageBucket: "toptrumps-fbc41.firebasestorage.app",
+  messagingSenderId: "809421006306",
+  appId: "1:809421006306:web:0a8cfbfd52d1ee8b1c85bb",
+  measurementId: "G-F47PY7P25P"
 };
 
 const app = initializeApp(firebaseConfig);
