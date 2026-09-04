@@ -19,10 +19,29 @@
       </div>
     </header>
 
-    <main id="game-board" class="hidden">
-      <!-- The active playing card and stats will render here -->
-    </main>
-  </div>
+  <main id="game-board" class="hidden">
+        <div id="game-status" class="status-banner">Waiting for opponent...</div>
+        
+        <div class="opponent-area">
+          <div class="card-back">
+            <p>Opponent Cards: <span id="opponent-count">0</span></p>
+          </div>
+        </div>
+  
+        <div class="player-area">
+          <p class="deck-count">Your Cards: <span id="player-count">0</span></p>
+          
+          <div id="active-card" class="card">
+            <h2 id="card-name">Dragon Name</h2>
+            <div class="card-image-placeholder">🐉</div>
+            
+            <div class="card-stats" id="stat-buttons-container">
+              <!-- Stat buttons will be injected here by JavaScript -->
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
 
   <script type="module" src="app.js"></script>
 </body>
